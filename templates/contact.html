@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}İletişim - LITUS{% endblock %}
+
+{% block content %}
+<div class="contact-section section-padding">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <h1 class="page-title text-center mb-5" data-aos="fade-up">İletişim</h1>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-4" data-aos="fade-right">
+                        <div class="contact-info">
+                            <h3>Bize Ulaşın</h3>
+                            <p class="contact-text">
+                                Sorularınız, önerileriniz veya destek talepleriniz için bizimle iletişime geçebilirsiniz.
+                            </p>
+                            
+                            <div class="contact-details mt-4">
+                                <div class="contact-item">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <div>
+                                        <strong>Adres</strong>
+                                        <p>İstanbul, Türkiye</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="contact-item">
+                                    <i class="fas fa-phone"></i>
+                                    <div>
+                                        <strong>Telefon</strong>
+                                        <p>+90 (212) 123 45 67</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="contact-item">
+                                    <i class="fas fa-envelope"></i>
+                                    <div>
+                                        <strong>E-posta</strong>
+                                        <p>info@litus.com</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="contact-item">
+                                    <i class="fas fa-clock"></i>
+                                    <div>
+                                        <strong>Çalışma Saatleri</strong>
+                                        <p>Pazartesi - Cuma: 09:00 - 18:00</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6" data-aos="fade-left">
+                        <div class="contact-form-card">
+                            <h3>Mesaj Gönder</h3>
+                            <form method="POST" action="{{ url_for('contact') }}">
+                                {{ form.hidden_tag() }}
+                                
+                                <div class="mb-3">
+                                    {{ form.name.label(class="form-label") }}
+                                    {{ form.name(class="form-control") }}
+                                    {% if form.name.errors %}
+                                        <div class="text-danger">{{ form.name.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.email.label(class="form-label") }}
+                                    {{ form.email(class="form-control") }}
+                                    {% if form.email.errors %}
+                                        <div class="text-danger">{{ form.email.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.subject.label(class="form-label") }}
+                                    {{ form.subject(class="form-control") }}
+                                    {% if form.subject.errors %}
+                                        <div class="text-danger">{{ form.subject.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.message.label(class="form-label") }}
+                                    {{ form.message(class="form-control", rows="5") }}
+                                    {% if form.message.errors %}
+                                        <div class="text-danger">{{ form.message.errors[0] }}</div>
+                                    {% endif %}
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary w-100">{{ form.submit.label.text }}</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Mağaza - LITUS{% endblock %}
+
+{% block content %}
+<div class="shop-header">
+    <div class="container">
+        <h1 class="page-title" data-aos="fade-up">Mağaza</h1>
+        <p class="page-subtitle" data-aos="fade-up" data-aos-delay="200">Premium sahil temalı koleksiyonumuzu keşfedin</p>
+    </div>
+</div>
+
+<section class="section-padding">
+    <div class="container">
+        <div class="row">
+            <!-- Sidebar Filters -->
+            <div class="col-lg-3 mb-4">
+                <div class="filter-sidebar" data-aos="fade-right">
+                    <h3 class="filter-title">Kategoriler</h3>
+                    <ul class="filter-list">
+                        <li>
+                            <a href="{{ url_for('shop') }}" class="{% if not selected_category %}active{% endif %}">
+                                Tümü
+                            </a>
+                        </li>
+                        {% for category in categories %}
+                        <li>
+                            <a href="{{ url_for('shop', category=category.id) }}" 
+                               class="{% if selected_category == category.id %}active{% endif %}">
+                                {{ category.name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <form method="GET" class="search-form mt-4">
+                        <h3 class="filter-title">Ara</h3>
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control" 
+                                   placeholder="Ürün ara..." value="{{ search }}">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Products Grid -->
+            <div class="col-lg-9">
+                <div class="products-header mb-4">
+                    <p class="products-count">{{ products|length }} ürün bulundu</p>
+                </div>
+                
+                {% if products %}
+                <div class="row g-4">
+                    {% for product in products %}
+                    <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 50 }}">
+                        <div class="product-card">
+                            <a href="{{ url_for('product_detail', slug=product.slug) }}">
+                                <div class="product-image">
+                                    {% if product.image_filename %}
+                                        <img src="{{ url_for('static', filename='images/products/' + product.image_filename) }}" alt="{{ product.name }}">
+                                    {% else %}
+                                        <img src="https://via.placeholder.com/400x500/0D1B2A/D4AF37?text={{ product.name|replace(' ', '+') }}" alt="{{ product.name }}">
+                                    {% endif %}
+                                    <div class="product-overlay">
+                                        <button class="btn btn-sm btn-overlay">Detayları Gör</button>
+                                    </div>
+                                </div>
+                            </a>
+                            <div class="product-info">
+                                <h4 class="product-name">{{ product.name }}</h4>
+                                <p class="product-category">{{ product.category.name }}</p>
+                                <p class="product-price">{{ "%.2f"|format(product.price) }} ₺</p>
+                                <div class="product-actions">
+                                    <button class="btn-like" data-product-id="{{ product.id }}">
+                                        <i class="far fa-heart"></i> <span class="like-count">{{ product.likes }}</span>
+                                    </button>
+                                    <button class="btn-add-cart" data-product-id="{{ product.id }}">
+                                        <i class="fas fa-shopping-bag"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-products" data-aos="fade-up">
+                    <i class="fas fa-search"></i>
+                    <h3>Ürün bulunamadı</h3>
+                    <p>Aradığınız kriterlere uygun ürün bulunamadı.</p>
+                    <a href="{{ url_for('shop') }}" class="btn btn-primary">Tüm Ürünleri Gör</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Ana Sayfa - LITUS{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h1 class="hero-title" data-aos="fade-up">LITUS</h1>
+        <p class="hero-subtitle" data-aos="fade-up" data-aos-delay="200">Sahil Temalı Premium Moda</p>
+        <p class="hero-description" data-aos="fade-up" data-aos-delay="400">Denizin zarafetini günlük yaşamınıza taşıyoruz</p>
+        <a href="{{ url_for('shop') }}" class="btn btn-hero" data-aos="fade-up" data-aos-delay="600">Koleksiyonu Keşfet</a>
+    </div>
+    <div class="hero-scroll">
+        <i class="fas fa-chevron-down"></i>
+    </div>
+</section>
+
+<!-- Featured Categories -->
+<section class="section-padding">
+    <div class="container">
+        <h2 class="section-title" data-aos="fade-up">Kategoriler</h2>
+        <div class="row g-4">
+            {% for category in categories %}
+            <div class="col-md-4 col-sm-6" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
+                <a href="{{ url_for('shop', category=category.id) }}" class="category-card">
+                    <div class="category-card-inner">
+                        <h3>{{ category.name }}</h3>
+                        <span class="category-link">Keşfet <i class="fas fa-arrow-right"></i></span>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <h2 class="section-title" data-aos="fade-up">Öne Çıkan Koleksiyon</h2>
+        <div class="row g-4">
+            {% for product in featured_products %}
+            <div class="col-lg-3 col-md-4 col-sm-6" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
+                <div class="product-card">
+                    <a href="{{ url_for('product_detail', slug=product.slug) }}">
+                        <div class="product-image">
+                            {% if product.image_filename %}
+                                <img src="{{ url_for('static', filename='images/products/' + product.image_filename) }}" alt="{{ product.name }}">
+                            {% else %}
+                                <img src="https://via.placeholder.com/400x500/0D1B2A/D4AF37?text={{ product.name|replace(' ', '+') }}" alt="{{ product.name }}">
+                            {% endif %}
+                            <div class="product-overlay">
+                                <button class="btn btn-sm btn-overlay">Detayları Gör</button>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="product-info">
+                        <h4 class="product-name">{{ product.name }}</h4>
+                        <p class="product-price">{{ "%.2f"|format(product.price) }} ₺</p>
+                        <div class="product-actions">
+                            <button class="btn-like" data-product-id="{{ product.id }}">
+                                <i class="far fa-heart"></i> <span class="like-count">{{ product.likes }}</span>
+                            </button>
+                            <button class="btn-add-cart" data-product-id="{{ product.id }}">
+                                <i class="fas fa-shopping-bag"></i> Sepete Ekle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- New Arrivals -->
+<section class="section-padding">
+    <div class="container">
+        <h2 class="section-title" data-aos="fade-up">Yeni Gelenler</h2>
+        <div class="row g-4">
+            {% for product in new_products %}
+            <div class="col-lg-3 col-md-4 col-sm-6" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 100 }}">
+                <div class="product-card">
+                    <a href="{{ url_for('product_detail', slug=product.slug) }}">
+                        <div class="product-image">
+                            {% if product.image_filename %}
+                                <img src="{{ url_for('static', filename='images/products/' + product.image_filename) }}" alt="{{ product.name }}">
+                            {% else %}
+                                <img src="https://via.placeholder.com/400x500/0D1B2A/D4AF37?text={{ product.name|replace(' ', '+') }}" alt="{{ product.name }}">
+                            {% endif %}
+                            <div class="product-overlay">
+                                <button class="btn btn-sm btn-overlay">Detayları Gör</button>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="product-info">
+                        <h4 class="product-name">{{ product.name }}</h4>
+                        <p class="product-price">{{ "%.2f"|format(product.price) }} ₺</p>
+                        <div class="product-actions">
+                            <button class="btn-like" data-product-id="{{ product.id }}">
+                                <i class="far fa-heart"></i> <span class="like-count">{{ product.likes }}</span>
+                            </button>
+                            <button class="btn-add-cart" data-product-id="{{ product.id }}">
+                                <i class="fas fa-shopping-bag"></i> Sepete Ekle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Story Section -->
+<section class="story-section section-padding">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6" data-aos="fade-right">
+                <h2 class="section-title">LITUS Hikayesi</h2>
+                <p class="story-text">
+                    LITUS, denizin ve kıyı yaşamının zarafetini günlük yaşamınıza taşıma amacıyla doğdu. 
+                    Her parça, sahil esintisini, yumuşak kumaşlarda ve özenle seçilmiş detaylarda yansıtır.
+                </p>
+                <p class="story-text">
+                    Amacımız sadece kıyafet satmak değil; her tasarımımızla bir hikâye anlatarak, 
+                    giyen kişiye kendine ait bir sahil anısı hediye etmektir.
+                </p>
+                <a href="{{ url_for('about') }}" class="btn btn-primary">Daha Fazla Bilgi</a>
+            </div>
+            <div class="col-md-6" data-aos="fade-left">
+                <div class="story-image">
+                    <div class="story-placeholder">
+                        <i class="fas fa-water"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

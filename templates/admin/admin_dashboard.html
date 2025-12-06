@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - LITUS{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard section-padding">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="page-title">Admin Panel</h1>
+            <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger">Çıkış Yap</a>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Categories Section -->
+        <div class="admin-section mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Kategoriler</h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                    <i class="fas fa-plus"></i> Kategori Ekle
+                </button>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Ad</th>
+                            <th>Slug</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category in categories %}
+                        <tr>
+                            <td>{{ category.id }}</td>
+                            <td>{{ category.name }}</td>
+                            <td>{{ category.slug }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin_delete_category', id=category.id) }}" 
+                                      onsubmit="return confirm('Bu kategoriyi silmek istediğinize emin misiniz?')" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i> Sil
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Products Section -->
+        <div class="admin-section">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Ürünler</h2>
+                <a href="{{ url_for('admin_add_product') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Ürün Ekle
+                </a>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Görsel</th>
+                            <th>Ad</th>
+                            <th>Fiyat</th>
+                            <th>Stok</th>
+                            <th>Kategori</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in products %}
+                        <tr>
+                            <td>{{ product.id }}</td>
+                            <td>
+                                {% if product.image_filename %}
+                                    <img src="{{ url_for('static', filename='images/products/' + product.image_filename) }}" 
+                                         alt="{{ product.name }}" style="width: 50px; height: 50px; object-fit: cover;">
+                                {% else %}
+                                    <span class="text-muted">Yok</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ product.name }}</td>
+                            <td>{{ "%.2f"|format(product.price) }} ₺</td>
+                            <td>{{ product.stock }}</td>
+                            <td>{{ product.category.name }}</td>
+                            <td>
+                                <a href="{{ url_for('admin_edit_product', id=product.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit"></i> Düzenle
+                                </a>
+                                <form method="POST" action="{{ url_for('admin_delete_product', id=product.id) }}" 
+                                      onsubmit="return confirm('Bu ürünü silmek istediğinize emin misiniz?')" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i> Sil
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal fade" id="addCategoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Yeni Kategori Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_add_category') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Kategori Adı</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="slug" class="form-label">Slug</label>
+                        <input type="text" class="form-control" id="slug" name="slug" required>
+                        <small class="form-text text-muted">Örnek: kadin, erkek, cocuk</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Ekle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
