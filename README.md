@@ -88,16 +88,26 @@ litus-ecommerce-demo/
 
 ## 🎯 Usage
 
-### Adding Products (Admin Panel)
+### Admin Panel Access
 
-1. Navigate to: `http://localhost:5000/admin/add-product`
-2. Fill in the form:
+**Admin Login:**
+- URL: `http://localhost:5000/admin/login`
+- Username: `admin`
+- Password: `admin`
+
+### Admin Panel Features
+
+1. **View Products**: `http://localhost:5000/admin/dashboard`
+   - View all products in a table
+   - Delete products with confirmation
+   - View product details
+
+2. **Add Product**: `http://localhost:5000/admin/add-product`
    - Product Name (required)
    - Price (required)
    - Category (required)
    - Description (optional)
    - Product Image (optional - PNG, JPG, JPEG, GIF, WEBP)
-3. Click "Ürünü Kaydet" (Save Product)
 
 ### Viewing Products
 
@@ -118,6 +128,23 @@ litus-ecommerce-demo/
 - **Animations**: Smooth fade-in, parallax, and hover effects
 - **Layout**: Ultra-wide hero, grid-based product display
 - **Effects**: Gold glow on logo hover, smooth scroll, progress indicator
+
+## 💾 Database & Data Storage
+
+### SQLite Database Location
+- **Database File**: `database.db` (proje kök dizininde, `app.py` ile aynı yerde)
+- **Auto-creation**: İlk çalıştırmada otomatik oluşturulur
+- **Data Storage**: Tüm veriler (kategoriler, ürünler, yorumlar, kullanıcılar, sepet, favoriler) SQLite veritabanında saklanır
+
+### Uploaded Files Location
+- **Product Images**: `static/uploads/` klasöründe tutulur
+- **Auto-creation**: Klasör otomatik oluşturulur
+
+### Important Notes
+- `database.db` dosyası `.gitignore`'da olduğu için GitHub'a yüklenmez
+- Her kurulumda boş bir veritabanı oluşturulur
+- Admin kullanıcısı otomatik oluşturulur (username: `admin`, password: `admin`)
+- Örnek kategoriler otomatik eklenir (Kadın, Erkek, Çocuk, Aksesuar, Koleksiyon)
 
 ## 📝 Database Schema
 
@@ -178,9 +205,11 @@ This is a demo project for portfolio/educational purposes.
 
 - This is a **visual showcase** project, not a full e-commerce solution
 - No payment processing
-- No user authentication (admin panel is open)
+- User authentication system included (register/login)
+- Admin panel with product management (add/delete products)
 - Simple SQLite database (suitable for demo purposes)
 - All images are stored locally in `static/uploads/`
+- Database file (`database.db`) is created automatically on first run
 
 ---
 
