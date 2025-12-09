@@ -1,90 +1,394 @@
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', function() {
-    // AOS Animation initialization
-    if (typeof AOS !== 'undefined') {
-        AOS.init({
-            duration: 800,
-            easing: 'ease-in-out',
-            once: true,
-            offset: 100
+    initNavbar();
+    initParallax();
+    initScrollAnimations();
+    initFlashMessages();
+    initSmoothScroll();
+    initCartAndFavorites();
+    initDropdowns();
+    initMobileMenu();
+    updateCartCount();
+});
+
+// ==================== NAVBAR ====================
+function initNavbar() {
+    const navbar = document.getElementById('navbar');
+    let lastScroll = 0;
+    
+    window.addEventListener('scroll', function() {
+        const currentScroll = window.pageYOffset;
+        
+        if (currentScroll > 100) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+        
+        lastScroll = currentScroll;
+    });
+    
+    // Logo hover glow effect
+    const logoImg = document.querySelector('.logo-img');
+    if (logoImg) {
+        logoImg.addEventListener('mouseenter', function() {
+            this.style.transition = 'all 0.3s ease';
+        });
+    }
+}
+
+// ==================== PARALLAX EFFECTS ====================
+function initParallax() {
+    const hero = document.getElementById('hero');
+    const storySection = document.querySelector('.story-section');
+    
+    if (hero) {
+        window.addEventListener('scroll', function() {
+            const scrolled = window.pageYOffset;
+            const rate = scrolled * 0.5;
+            
+            if (scrolled < window.innerHeight) {
+                hero.style.transform = `translateY(${rate}px)`;
+            }
         });
     }
     
-    // Initialize cart count
-    updateCartCount();
+    if (storySection) {
+        window.addEventListener('scroll', function() {
+            const scrolled = window.pageYOffset;
+            const storyOffset = storySection.offsetTop;
+            const windowHeight = window.innerHeight;
+            
+            if (scrolled + windowHeight > storyOffset && scrolled < storyOffset + storySection.offsetHeight) {
+                const parallaxRate = (scrolled - storyOffset + windowHeight) * 0.3;
+                const background = storySection.querySelector('.story-background');
+                if (background) {
+                    background.style.transform = `translateY(${parallaxRate}px)`;
+                }
+            }
+        });
+    }
+}
+
+// ==================== SCROLL ANIMATIONS ====================
+function initScrollAnimations() {
+    // AOS (Animate On Scroll) benzeri basit implementasyon
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -100px 0px'
+    };
     
-    // Initialize event listeners
-    initEventListeners();
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+                observer.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+    
+    // Tüm animasyonlu elementleri bul
+    const animatedElements = document.querySelectorAll('[data-aos]');
+    animatedElements.forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+        
+        const delay = el.getAttribute('data-aos-delay') || 0;
+        el.style.transitionDelay = `${delay}ms`;
+        
+        observer.observe(el);
+    });
+    
+    // Product cards için özel animasyon
+    const productCards = document.querySelectorAll('.product-card');
+    productCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(50px)';
+        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        card.style.transitionDelay = `${index * 100}ms`;
+        
+        observer.observe(card);
+    });
+}
+
+// ==================== SMOOTH SCROLL ====================
+function initSmoothScroll() {
+    // Hero scroll button
+    const heroScroll = document.querySelector('.hero-scroll');
+    if (heroScroll) {
+        heroScroll.addEventListener('click', function() {
+            const productsSection = document.getElementById('products');
+            if (productsSection) {
+                productsSection.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    }
+    
+    // Tüm anchor linkler için smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            if (href !== '#' && href.length > 1) {
+                e.preventDefault();
+                const target = document.querySelector(href);
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }
+        });
+    });
+}
+
+// ==================== FLASH MESSAGES ====================
+function initFlashMessages() {
+    const flashMessages = document.querySelectorAll('.flash-message');
+    
+    flashMessages.forEach(message => {
+        const closeBtn = message.querySelector('.flash-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                message.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => {
+                    message.remove();
+                }, 300);
+            });
+        }
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (message.parentNode) {
+                message.style.animation = 'slideOutRight 0.3s ease-out';
+                setTimeout(() => {
+                    message.remove();
+                }, 300);
+            }
+        }, 5000);
+    });
+}
+
+// Slide out animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// ==================== PRODUCT CARD HOVER EFFECTS ====================
+document.querySelectorAll('.product-card').forEach(card => {
+    card.addEventListener('mouseenter', function() {
+        this.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    });
 });
 
-// ==================== EVENT LISTENERS ====================
-function initEventListeners() {
-    // Add to cart buttons
-    document.querySelectorAll('.btn-add-cart').forEach(btn => {
-        btn.addEventListener('click', handleAddToCart);
+// ==================== PARALLAX ON MOUSE MOVE ====================
+document.addEventListener('mousemove', function(e) {
+    const mouseX = e.clientX / window.innerWidth;
+    const mouseY = e.clientY / window.innerHeight;
+    
+    // Hero section subtle parallax
+    const hero = document.getElementById('hero');
+    if (hero && window.pageYOffset < window.innerHeight) {
+        const heroContent = hero.querySelector('.hero-content');
+        if (heroContent) {
+            const moveX = (mouseX - 0.5) * 20;
+            const moveY = (mouseY - 0.5) * 20;
+            heroContent.style.transform = `translate(${moveX}px, ${moveY}px)`;
+        }
+    }
+});
+
+// ==================== LAZY LOADING IMAGES ====================
+if ('IntersectionObserver' in window) {
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                    img.removeAttribute('data-src');
+                    observer.unobserve(img);
+                }
+            }
+        });
     });
     
-    // Like buttons
-    document.querySelectorAll('.btn-like').forEach(btn => {
-        btn.addEventListener('click', handleLike);
+    document.querySelectorAll('img[data-src]').forEach(img => {
+        imageObserver.observe(img);
+    });
+}
+
+// ==================== SCROLL PROGRESS INDICATOR ====================
+function createScrollProgress() {
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 0%;
+        height: 2px;
+        background: linear-gradient(90deg, #D4AF37, #F4D03F);
+        z-index: 9999;
+        transition: width 0.1s ease;
+    `;
+    document.body.appendChild(progressBar);
+    
+    window.addEventListener('scroll', function() {
+        const windowHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const scrolled = (window.pageYOffset / windowHeight) * 100;
+        progressBar.style.width = scrolled + '%';
+    });
+}
+
+createScrollProgress();
+
+// ==================== CURSOR EFFECT (OPTIONAL - Premium feel) ====================
+function initCustomCursor() {
+    if (window.innerWidth > 768) {
+        const cursor = document.createElement('div');
+        cursor.className = 'custom-cursor';
+        cursor.style.cssText = `
+            width: 20px;
+            height: 20px;
+            border: 2px solid #D4AF37;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.2s ease;
+            display: none;
+        `;
+        document.body.appendChild(cursor);
+        
+        document.addEventListener('mousemove', function(e) {
+            cursor.style.left = e.clientX - 10 + 'px';
+            cursor.style.top = e.clientY - 10 + 'px';
+            cursor.style.display = 'block';
+        });
+        
+        document.querySelectorAll('a, button, .product-card').forEach(el => {
+            el.addEventListener('mouseenter', function() {
+                cursor.style.transform = 'scale(1.5)';
+                cursor.style.borderColor = '#F4D03F';
+            });
+            el.addEventListener('mouseleave', function() {
+                cursor.style.transform = 'scale(1)';
+                cursor.style.borderColor = '#D4AF37';
+            });
+        });
+    }
+}
+
+// Uncomment to enable custom cursor
+// initCustomCursor();
+
+// ==================== DROPDOWN MENUS ====================
+function initDropdowns() {
+    const dropdowns = document.querySelectorAll('.nav-dropdown');
+    
+    dropdowns.forEach(dropdown => {
+        const toggle = dropdown.querySelector('.dropdown-toggle');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        
+        if (toggle && menu) {
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Diğer dropdown'ları kapat
+                dropdowns.forEach(other => {
+                    if (other !== dropdown) {
+                        other.classList.remove('active');
+                    }
+                });
+                
+                // Bu dropdown'ı toggle et
+                dropdown.classList.toggle('active');
+            });
+        }
     });
     
-    // Favorite buttons
-    document.querySelectorAll('#favoriteBtn').forEach(btn => {
-        btn.addEventListener('click', handleFavorite);
+    // Dışarı tıklanınca kapat
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.nav-dropdown')) {
+            dropdowns.forEach(dropdown => dropdown.classList.remove('active'));
+        }
+    });
+}
+
+// ==================== CART & FAVORITES ====================
+function initCartAndFavorites() {
+    // Sepete ekle butonları
+    document.querySelectorAll('.btn-add-cart, #addToCartBtn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const productId = this.getAttribute('data-product-id');
+            if (productId) {
+                addToCart(productId, 1);
+            }
+        });
     });
     
-    // Cart quantity controls
+    // Favori butonları
+    document.querySelectorAll('.btn-favorite, #toggleFavoriteBtn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const productId = this.getAttribute('data-product-id');
+            if (productId) {
+                toggleFavorite(productId);
+            }
+        });
+    });
+    
+    // Sepet sayfası butonları
     document.querySelectorAll('.increase-qty').forEach(btn => {
-        btn.addEventListener('click', handleIncreaseQuantity);
+        btn.addEventListener('click', function() {
+            const cartId = this.getAttribute('data-cart-id');
+            const item = this.closest('.cart-item');
+            const quantityEl = item.querySelector('.quantity-value');
+            const currentQty = parseInt(quantityEl.textContent);
+            updateCartQuantity(cartId, currentQty + 1);
+        });
     });
     
     document.querySelectorAll('.decrease-qty').forEach(btn => {
-        btn.addEventListener('click', handleDecreaseQuantity);
+        btn.addEventListener('click', function() {
+            const cartId = this.getAttribute('data-cart-id');
+            const item = this.closest('.cart-item');
+            const quantityEl = item.querySelector('.quantity-value');
+            const currentQty = parseInt(quantityEl.textContent);
+            if (currentQty > 1) {
+                updateCartQuantity(cartId, currentQty - 1);
+            }
+        });
     });
     
-    // Remove from cart
     document.querySelectorAll('.remove-item').forEach(btn => {
-        btn.addEventListener('click', handleRemoveFromCart);
+        btn.addEventListener('click', function() {
+            const cartId = this.getAttribute('data-cart-id');
+            if (confirm('Bu ürünü sepetten çıkarmak istediğinize emin misiniz?')) {
+                removeFromCart(cartId);
+            }
+        });
     });
-    
-    // Comment form
-    const commentForm = document.getElementById('commentForm');
-    if (commentForm) {
-        commentForm.addEventListener('submit', handleCommentSubmit);
-    }
-    
-    // Checkout button
-    const checkoutBtn = document.getElementById('checkoutBtn');
-    if (checkoutBtn) {
-        checkoutBtn.addEventListener('click', handleCheckout);
-    }
-    
-    // Add to cart from product detail page
-    const addToCartBtn = document.getElementById('addToCartBtn');
-    if (addToCartBtn) {
-        addToCartBtn.addEventListener('click', handleAddToCartFromDetail);
-    }
-    
-    // Like from product detail page
-    const likeBtn = document.getElementById('likeBtn');
-    if (likeBtn) {
-        likeBtn.addEventListener('click', handleLikeFromDetail);
-    }
-}
-
-// ==================== CART FUNCTIONS ====================
-function handleAddToCart(e) {
-    e.preventDefault();
-    const productId = e.currentTarget.getAttribute('data-product-id');
-    addToCart(productId, 1);
-}
-
-function handleAddToCartFromDetail(e) {
-    e.preventDefault();
-    const productId = e.currentTarget.getAttribute('data-product-id');
-    const quantity = parseInt(document.getElementById('productQuantity').value) || 1;
-    addToCart(productId, quantity);
 }
 
 function addToCart(productId, quantity) {
@@ -101,21 +405,26 @@ function addToCart(productId, quantity) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            updateCartCount();
             showNotification('Ürün sepete eklendi!', 'success');
+            updateCartCount();
             
-            // Update button state
-            const btn = document.querySelector(`[data-product-id="${productId}"].btn-add-cart`);
+            // Buton görünümünü güncelle
+            const btn = document.querySelector(`[data-product-id="${productId}"].btn-add-cart, #addToCartBtn`);
             if (btn) {
+                const originalHTML = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-check"></i> Eklendi';
                 btn.style.backgroundColor = '#28a745';
                 setTimeout(() => {
-                    btn.innerHTML = '<i class="fas fa-shopping-bag"></i> Sepete Ekle';
+                    btn.innerHTML = originalHTML;
                     btn.style.backgroundColor = '';
                 }, 2000);
             }
         } else {
-            showNotification('Bir hata oluştu!', 'error');
+            if (data.message && data.message.includes('giriş')) {
+                window.location.href = '/login';
+            } else {
+                showNotification(data.message || 'Bir hata oluştu!', 'error');
+            }
         }
     })
     .catch(error => {
@@ -124,61 +433,102 @@ function addToCart(productId, quantity) {
     });
 }
 
-function handleIncreaseQuantity(e) {
-    const itemId = e.currentTarget.getAttribute('data-item-id');
-    const quantityElement = e.currentTarget.parentElement.querySelector('.quantity-value');
-    const currentQuantity = parseInt(quantityElement.textContent);
-    updateCartItem(itemId, currentQuantity + 1);
+function toggleFavorite(productId) {
+    fetch('/api/toggle-favorite', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: parseInt(productId)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const btn = document.querySelector(`[data-product-id="${productId}"].btn-favorite, #toggleFavoriteBtn`);
+            const icon = btn ? btn.querySelector('i') : null;
+            const text = btn ? btn.querySelector('#favoriteText') : null;
+            
+            if (data.is_favorite) {
+                showNotification('Favorilere eklendi!', 'success');
+                if (icon) {
+                    icon.classList.remove('far', 'fa-heart-o');
+                    icon.classList.add('fas', 'fa-heart');
+                }
+                if (text) text.textContent = 'Favorilerden Çıkar';
+                if (btn) btn.classList.add('active');
+            } else {
+                showNotification('Favorilerden çıkarıldı!', 'success');
+                if (icon) {
+                    icon.classList.remove('fas', 'fa-heart');
+                    icon.classList.add('far', 'fa-heart-o');
+                }
+                if (text) text.textContent = 'Favorilere Ekle';
+                if (btn) btn.classList.remove('active');
+                
+                // Eğer favoriler sayfasındaysak, ürünü listeden kaldır
+                if (window.location.pathname === '/favorites') {
+                    const productCard = btn ? btn.closest('.product-card') : null;
+                    if (productCard) {
+                        productCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        productCard.style.opacity = '0';
+                        productCard.style.transform = 'scale(0.9)';
+                        setTimeout(() => {
+                            productCard.remove();
+                            // Eğer favori kalmadıysa sayfayı yenile
+                            const remainingFavorites = document.querySelectorAll('.product-card');
+                            if (remainingFavorites.length === 0) {
+                                setTimeout(() => location.reload(), 500);
+                            }
+                        }, 300);
+                    }
+                }
+            }
+        } else {
+            if (data.message && data.message.includes('giriş')) {
+                window.location.href = '/login';
+            } else {
+                showNotification(data.message || 'Bir hata oluştu!', 'error');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Bir hata oluştu!', 'error');
+    });
 }
 
-function handleDecreaseQuantity(e) {
-    const itemId = e.currentTarget.getAttribute('data-item-id');
-    const quantityElement = e.currentTarget.parentElement.querySelector('.quantity-value');
-    const currentQuantity = parseInt(quantityElement.textContent);
-    if (currentQuantity > 1) {
-        updateCartItem(itemId, currentQuantity - 1);
-    }
-}
-
-function updateCartItem(itemId, quantity) {
+function updateCartQuantity(cartId, quantity) {
     fetch('/api/update-cart', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            item_id: parseInt(itemId),
+            cart_id: parseInt(cartId),
             quantity: quantity
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update quantity display
-            const quantityElement = document.querySelector(`[data-item-id="${itemId}"] .quantity-value`);
-            if (quantityElement) {
-                quantityElement.textContent = quantity;
-            }
-            
-            // Update item total
-            const cartItem = document.querySelector(`[data-item-id="${itemId}"]`);
-            if (cartItem) {
-                const priceElement = cartItem.querySelector('.cart-item-price');
-                if (priceElement && data.item_total) {
-                    priceElement.textContent = data.item_total.toFixed(2) + ' ₺';
+            const item = document.querySelector(`[data-cart-id="${cartId}"]`);
+            if (item) {
+                const quantityEl = item.querySelector('.quantity-value');
+                const priceEl = item.querySelector('.cart-item-price');
+                
+                if (quantityEl) quantityEl.textContent = quantity;
+                
+                // Toplamı güncelle
+                if (data.total !== undefined) {
+                    document.getElementById('subtotal').textContent = data.total.toFixed(2) + ' ₺';
+                    document.getElementById('total').textContent = data.total.toFixed(2) + ' ₺';
                 }
-            }
-            
-            // Update cart totals
-            if (data.total !== undefined) {
-                updateCartTotals(data.total);
-            }
-            
-            if (quantity === 0) {
-                // Remove item from DOM
-                const cartItem = document.querySelector(`[data-item-id="${itemId}"]`);
-                if (cartItem) {
-                    cartItem.remove();
+                
+                if (quantity === 0) {
+                    item.style.opacity = '0';
+                    setTimeout(() => item.remove(), 300);
                     updateCartCount();
                 }
             }
@@ -190,47 +540,53 @@ function updateCartItem(itemId, quantity) {
     });
 }
 
-function handleRemoveFromCart(e) {
-    const itemId = e.currentTarget.getAttribute('data-item-id');
-    
-    if (!confirm('Bu ürünü sepetten çıkarmak istediğinize emin misiniz?')) {
-        return;
-    }
-    
+function removeFromCart(cartId) {
     fetch('/api/remove-from-cart', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            item_id: parseInt(itemId)
+            cart_id: parseInt(cartId)
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Remove item from DOM
-            const cartItem = document.querySelector(`[data-item-id="${itemId}"]`);
-            if (cartItem) {
-                cartItem.style.transition = 'opacity 0.3s';
-                cartItem.style.opacity = '0';
+            const item = document.querySelector(`[data-cart-id="${cartId}"]`);
+            if (item) {
+                // Fiyatı al
+                const priceText = item.querySelector('.cart-item-price');
+                const price = priceText ? parseFloat(priceText.textContent.replace(' ₺', '').replace(',', '.')) : 0;
+                
+                item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(-20px)';
+                
                 setTimeout(() => {
-                    cartItem.remove();
+                    item.remove();
                     updateCartCount();
                     
-                    // Check if cart is empty
-                    if (data.cart_count === 0) {
-                        location.reload();
+                    // Toplamı güncelle
+                    const subtotalEl = document.getElementById('subtotal');
+                    const totalEl = document.getElementById('total');
+                    if (subtotalEl && totalEl) {
+                        const currentTotal = parseFloat(subtotalEl.textContent.replace(' ₺', '').replace(',', '.'));
+                        const newTotal = Math.max(0, currentTotal - price);
+                        subtotalEl.textContent = newTotal.toFixed(2) + ' ₺';
+                        totalEl.textContent = newTotal.toFixed(2) + ' ₺';
+                    }
+                    
+                    // Eğer sepet boşsa sayfayı yenile
+                    const remainingItems = document.querySelectorAll('.cart-item');
+                    if (remainingItems.length === 0) {
+                        setTimeout(() => location.reload(), 500);
                     }
                 }, 300);
             }
-            
-            // Update cart totals
-            if (data.total !== undefined) {
-                updateCartTotals(data.total);
-            }
-            
             showNotification('Ürün sepetten çıkarıldı!', 'success');
+        } else {
+            showNotification('Bir hata oluştu!', 'error');
         }
     })
     .catch(error => {
@@ -248,14 +604,10 @@ function updateCartCount() {
             const cartItems = doc.querySelectorAll('.cart-item');
             const count = cartItems.length;
             
-            const cartCountElement = document.getElementById('cartCount');
-            if (cartCountElement) {
-                cartCountElement.textContent = count;
-                if (count > 0) {
-                    cartCountElement.style.display = 'inline-block';
-                } else {
-                    cartCountElement.style.display = 'none';
-                }
+            const cartCountEl = document.getElementById('navCartCount');
+            if (cartCountEl) {
+                cartCountEl.textContent = count;
+                cartCountEl.style.display = count > 0 ? 'inline-block' : 'none';
             }
         })
         .catch(error => {
@@ -263,281 +615,43 @@ function updateCartCount() {
         });
 }
 
-function updateCartTotals(total) {
-    const subtotalElement = document.getElementById('subtotal');
-    const totalElement = document.getElementById('total');
-    
-    if (subtotalElement) {
-        subtotalElement.textContent = total.toFixed(2) + ' ₺';
-    }
-    if (totalElement) {
-        totalElement.textContent = total.toFixed(2) + ' ₺';
-    }
-}
-
-function handleCheckout(e) {
-    e.preventDefault();
-    alert('Bu bir demo sitedir. Ödeme işlemi gerçekleştirilmez.\n\nSiparişiniz başarıyla alındı! (Demo)');
-}
-
-// ==================== LIKE FUNCTIONS ====================
-function handleLike(e) {
-    e.preventDefault();
-    const productId = e.currentTarget.getAttribute('data-product-id');
-    likeProduct(productId, e.currentTarget);
-}
-
-function handleLikeFromDetail(e) {
-    e.preventDefault();
-    const productId = e.currentTarget.getAttribute('data-product-id');
-    likeProduct(productId, e.currentTarget, true);
-}
-
-function likeProduct(productId, buttonElement, isDetailPage = false) {
-    fetch('/api/like-product', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            product_id: parseInt(productId)
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update like count
-            if (isDetailPage) {
-                const likeCountElement = document.getElementById('likeCount');
-                if (likeCountElement) {
-                    likeCountElement.textContent = data.likes;
-                }
-            } else {
-                const likeCountElement = buttonElement.querySelector('.like-count');
-                if (likeCountElement) {
-                    likeCountElement.textContent = data.likes;
-                }
-            }
-            
-            // Update button icon
-            const icon = buttonElement.querySelector('i');
-            if (icon) {
-                icon.classList.remove('far');
-                icon.classList.add('fas');
-                setTimeout(() => {
-                    icon.classList.remove('fas');
-                    icon.classList.add('far');
-                }, 500);
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-}
-
-// ==================== FAVORITE FUNCTIONS ====================
-function handleFavorite(e) {
-    e.preventDefault();
-    const productId = e.currentTarget.getAttribute('data-product-id');
-    toggleFavorite(productId, e.currentTarget);
-}
-
-function toggleFavorite(productId, buttonElement) {
-    fetch('/api/toggle-favorite', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            product_id: parseInt(productId)
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const icon = buttonElement.querySelector('i');
-            if (data.is_favorite) {
-                icon.classList.remove('far');
-                icon.classList.add('fas');
-                showNotification('Favorilere eklendi!', 'success');
-            } else {
-                icon.classList.remove('fas');
-                icon.classList.add('far');
-                showNotification('Favorilerden çıkarıldı!', 'success');
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Bir hata oluştu!', 'error');
-    });
-}
-
-// ==================== COMMENT FUNCTIONS ====================
-function handleCommentSubmit(e) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const productId = form.getAttribute('data-product-id');
-    const authorName = document.getElementById('commentAuthor').value;
-    const content = document.getElementById('commentContent').value;
-    
-    if (!authorName || !content) {
-        showNotification('Lütfen tüm alanları doldurun!', 'error');
-        return;
-    }
-    
-    fetch('/api/add-comment', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            product_id: parseInt(productId),
-            author_name: authorName,
-            content: content
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Add comment to DOM
-            addCommentToDOM(data.comment);
-            
-            // Clear form
-            form.reset();
-            
-            showNotification('Yorumunuz eklendi!', 'success');
-        } else {
-            showNotification(data.message || 'Bir hata oluştu!', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Bir hata oluştu!', 'error');
-    });
-}
-
-function addCommentToDOM(comment) {
-    const commentsList = document.querySelector('.comments-list');
-    if (!commentsList) return;
-    
-    const commentItem = document.createElement('div');
-    commentItem.className = 'comment-item';
-    commentItem.setAttribute('data-aos', 'fade-up');
-    commentItem.innerHTML = `
-        <div class="comment-header">
-            <strong>${escapeHtml(comment.author_name)}</strong>
-            <span class="comment-date">${comment.created_at}</span>
-        </div>
-        <div class="comment-content">
-            ${escapeHtml(comment.content)}
-        </div>
-    `;
-    
-    // Insert at the beginning
-    if (commentsList.firstChild) {
-        commentsList.insertBefore(commentItem, commentsList.firstChild);
-    } else {
-        commentsList.appendChild(commentItem);
-    }
-    
-    // Reinitialize AOS for new element
-    if (typeof AOS !== 'undefined') {
-        AOS.refresh();
-    }
-}
-
-// ==================== UTILITY FUNCTIONS ====================
-function showNotification(message, type = 'success') {
-    // Remove existing notifications
-    const existing = document.querySelector('.custom-notification');
-    if (existing) {
-        existing.remove();
-    }
-    
-    // Create notification
+function showNotification(message, type) {
     const notification = document.createElement('div');
-    notification.className = `custom-notification alert alert-${type === 'error' ? 'danger' : 'success'}`;
+    notification.className = `flash-message flash-${type}`;
     notification.style.cssText = `
         position: fixed;
         top: 100px;
         right: 20px;
         z-index: 9999;
-        min-width: 300px;
         padding: 1rem 1.5rem;
         border-radius: 5px;
         box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        animation: slideIn 0.3s ease;
+        animation: slideInRight 0.3s ease-out;
     `;
     notification.textContent = message;
-    
     document.body.appendChild(notification);
     
-    // Auto remove after 3 seconds
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
+        notification.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
     }, 3000);
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+// ==================== MOBILE MENU ====================
+function initMobileMenu() {
+    const toggle = document.getElementById('mobileMenuToggle');
+    const menu = document.querySelector('.nav-menu');
+    
+    if (toggle && menu) {
+        toggle.addEventListener('click', function() {
+            menu.classList.toggle('active');
+        });
+        
+        // Dışarı tıklanınca kapat
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.navbar')) {
+                menu.classList.remove('active');
+            }
+        });
+    }
 }
-
-// Add CSS animations for notifications
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-// ==================== PARALLAX EFFECT ====================
-window.addEventListener('scroll', function() {
-    const scrolled = window.pageYOffset;
-    const heroSection = document.querySelector('.hero-section');
-    
-    if (heroSection) {
-        const rate = scrolled * 0.5;
-        heroSection.style.transform = `translateY(${rate}px)`;
-    }
-});
-
-// ==================== SMOOTH SCROLL ====================
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    });
-});
-

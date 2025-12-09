@@ -1,143 +1,116 @@
 {% extends "base.html" %}
 
-{% block title %}{{ product.name }} - LITUS{% endblock %}
+{% block title %}{{ product['name'] }} - LITUS{% endblock %}
 
 {% block content %}
-<div class="product-detail-section section-padding">
+<!-- Product Detail Section -->
+<section class="product-detail-section section-padding">
     <div class="container">
-        <nav aria-label="breadcrumb" class="mb-4">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Ana Sayfa</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('shop') }}">Mağaza</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('shop', category=product.category_id) }}">{{ product.category.name }}</a></li>
-                <li class="breadcrumb-item active">{{ product.name }}</li>
-            </ol>
-        </nav>
-        
-        <div class="row">
+        <div class="product-detail-grid">
             <!-- Product Image -->
-            <div class="col-lg-6 mb-4" data-aos="fade-right">
-                <div class="product-detail-image">
-                    {% if product.image_filename %}
-                        <img src="{{ url_for('static', filename='images/products/' + product.image_filename) }}" 
-                             alt="{{ product.name }}" class="img-fluid">
-                    {% else %}
-                        <img src="https://via.placeholder.com/800x1000/0D1B2A/D4AF37?text={{ product.name|replace(' ', '+') }}" 
-                             alt="{{ product.name }}" class="img-fluid">
-                    {% endif %}
-                </div>
+            <div class="product-detail-image" data-aos="fade-right">
+                {% if product['image'] %}
+                    <img src="{{ url_for('static', filename='uploads/' + product['image']) }}" alt="{{ product['name'] }}">
+                {% else %}
+                    <div class="product-placeholder-large">
+                        <i class="fas fa-image"></i>
+                    </div>
+                {% endif %}
             </div>
             
             <!-- Product Info -->
-            <div class="col-lg-6" data-aos="fade-left">
-                <div class="product-detail-info">
-                    <h1 class="product-detail-name">{{ product.name }}</h1>
-                    <p class="product-detail-category">{{ product.category.name }}</p>
-                    <p class="product-detail-price">{{ "%.2f"|format(product.price) }} ₺</p>
-                    
-                    {% if product.description %}
-                    <div class="product-detail-description">
-                        <h3>Açıklama</h3>
-                        <p>{{ product.description }}</p>
-                    </div>
+            <div class="product-detail-info" data-aos="fade-left">
+                <h1 class="product-detail-name">{{ product['name'] }}</h1>
+                <p class="product-detail-price">{{ "%.2f"|format(product['price']) }} ₺</p>
+                
+                {% if product['description'] %}
+                <div class="product-detail-description">
+                    <h3>Açıklama</h3>
+                    <p>{{ product['description'] }}</p>
+                </div>
+                {% endif %}
+                
+                <div class="product-detail-actions">
+                    {% if current_user %}
+                        <button class="btn-luxury" id="addToCartBtn" data-product-id="{{ product['id'] }}">
+                            <i class="fas fa-shopping-bag"></i> Sepete Ekle
+                        </button>
+                        <button class="btn-luxury-outline" id="toggleFavoriteBtn" data-product-id="{{ product['id'] }}">
+                            <i class="fas fa-heart{% if not is_favorite %}-o{% endif %}"></i> 
+                            <span id="favoriteText">{% if is_favorite %}Favorilerden Çıkar{% else %}Favorilere Ekle{% endif %}</span>
+                        </button>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn-luxury">
+                            <i class="fas fa-shopping-bag"></i> Sepete Ekle
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn-luxury-outline">
+                            <i class="fas fa-heart"></i> Favorilere Ekle
+                        </a>
                     {% endif %}
-                    
-                    <div class="product-detail-stock">
-                        {% if product.stock > 0 %}
-                            <span class="badge bg-success">Stokta Var</span>
-                        {% else %}
-                            <span class="badge bg-danger">Stokta Yok</span>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="product-detail-actions mt-4">
-                        <div class="quantity-selector mb-3">
-                            <label>Adet:</label>
-                            <div class="input-group" style="max-width: 150px;">
-                                <button class="btn btn-outline-secondary" type="button" id="decreaseQty">-</button>
-                                <input type="number" class="form-control text-center" id="productQuantity" value="1" min="1" max="{{ product.stock }}">
-                                <button class="btn btn-outline-secondary" type="button" id="increaseQty">+</button>
-                            </div>
-                        </div>
-                        
-                        <div class="action-buttons">
-                            <button class="btn btn-primary btn-lg me-2" id="addToCartBtn" data-product-id="{{ product.id }}">
-                                <i class="fas fa-shopping-bag"></i> Sepete Ekle
-                            </button>
-                            <button class="btn btn-outline-primary btn-lg me-2" id="likeBtn" data-product-id="{{ product.id }}">
-                                <i class="far fa-heart"></i> <span id="likeCount">{{ product.likes }}</span>
-                            </button>
-                            <button class="btn btn-outline-primary btn-lg" id="favoriteBtn" data-product-id="{{ product.id }}">
-                                <i class="far fa-star"></i> Favori
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
         
         <!-- Comments Section -->
-        <div class="row mt-5">
-            <div class="col-12">
-                <div class="comments-section" data-aos="fade-up">
-                    <h2 class="section-title">Yorumlar</h2>
-                    
-                    <!-- Comment Form -->
-                    <div class="comment-form-card mb-4">
-                        <h3>Yorum Yap</h3>
-                        <form id="commentForm" data-product-id="{{ product.id }}">
-                            <div class="mb-3">
-                                <input type="text" class="form-control" id="commentAuthor" placeholder="Adınız" required>
-                            </div>
-                            <div class="mb-3">
-                                <textarea class="form-control" id="commentContent" rows="4" placeholder="Yorumunuz" required></textarea>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Yorum Yap</button>
-                        </form>
+        <div class="comments-section" data-aos="fade-up">
+            <h2 class="section-title">Yorumlar</h2>
+            
+            <!-- Add Comment Form -->
+            {% if current_user %}
+            <div class="comment-form-card">
+                <h3>Yorum Yap</h3>
+                <form method="POST" action="{{ url_for('add_comment', product_id=product['id']) }}">
+                    <div class="form-group">
+                        <textarea name="comment" class="form-textarea" rows="4" placeholder="Yorumunuz" required></textarea>
                     </div>
-                    
-                    <!-- Comments List -->
-                    <div class="comments-list">
-                        {% if comments %}
-                            {% for comment in comments %}
-                            <div class="comment-item" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 50 }}">
-                                <div class="comment-header">
-                                    <strong>{{ comment.author_name }}</strong>
-                                    <span class="comment-date">{{ comment.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
-                                </div>
-                                <div class="comment-content">
-                                    {{ comment.content }}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <p class="text-muted">Henüz yorum yapılmamış. İlk yorumu siz yapın!</p>
-                        {% endif %}
+                    <button type="submit" class="btn-luxury">Yorum Yap</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="comment-form-card">
+                <p>Yorum yapmak için <a href="{{ url_for('login') }}">giriş yapın</a>.</p>
+            </div>
+            {% endif %}
+            
+            <!-- Comments List -->
+            <div class="comments-list">
+                {% if comments %}
+                    {% for comment in comments %}
+                    <div class="comment-item" data-aos="fade-up" data-aos-delay="{{ loop.index0 * 50 }}">
+                        <div class="comment-header">
+                            <strong class="comment-username">{{ comment['username'] }}</strong>
+                            <span class="comment-date">{{ comment['created_at'] }}</span>
+                        </div>
+                        <p class="comment-text">{{ comment['comment'] }}</p>
                     </div>
-                </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-comments">Henüz yorum yapılmamış. İlk yorumu siz yapın!</p>
+                {% endif %}
             </div>
         </div>
     </div>
-</div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Quantity controls
-    document.getElementById('increaseQty').addEventListener('click', function() {
-        const input = document.getElementById('productQuantity');
-        const max = parseInt(input.getAttribute('max'));
-        if (parseInt(input.value) < max) {
-            input.value = parseInt(input.value) + 1;
-        }
-    });
+    // Sepete ekle
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    if (addToCartBtn) {
+        addToCartBtn.addEventListener('click', function() {
+            const productId = this.getAttribute('data-product-id');
+            addToCart(productId, 1);
+        });
+    }
     
-    document.getElementById('decreaseQty').addEventListener('click', function() {
-        const input = document.getElementById('productQuantity');
-        if (parseInt(input.value) > 1) {
-            input.value = parseInt(input.value) - 1;
-        }
-    });
+    // Favori toggle
+    const toggleFavoriteBtn = document.getElementById('toggleFavoriteBtn');
+    if (toggleFavoriteBtn) {
+        toggleFavoriteBtn.addEventListener('click', function() {
+            const productId = this.getAttribute('data-product-id');
+            toggleFavorite(productId);
+        });
+    }
 </script>
 {% endblock %}
-

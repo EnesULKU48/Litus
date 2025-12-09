@@ -1,32 +1,32 @@
-# LITUS E-Commerce Demo
+# LITUS Store - Ultra Premium Fashion E-Commerce Demo
 
-LITUS, sahil temalı premium moda markası için gösterimlik (demo) bir e-ticaret web sitesidir. Flask ve SQLite kullanılarak geliştirilmiştir.
+Ultra-premium fashion brand demo website built with Flask and SQLite. Inspired by Gucci, Louis Vuitton, and Prada design aesthetics.
 
-## 🎨 Özellikler
+## 🎨 Features
 
-- **Premium Tasarım**: Lacivert, altın, krem ve beyaz renk paleti ile modern ve şık arayüz
-- **Responsive Tasarım**: Tüm cihazlarda mükemmel görünüm
-- **Ürün Yönetimi**: Kategori bazlı ürün listeleme, detay sayfaları
-- **Sepet Sistemi**: Session bazlı sepet yönetimi
-- **Favoriler**: Kullanıcı favori ürünleri kaydedebilir
-- **Yorum Sistemi**: Ürünler için yorum ve beğeni özelliği
-- **Admin Panel**: Ürün ve kategori yönetimi için admin paneli
-- **Animasyonlar**: AOS ile scroll animasyonları ve parallax efektleri
+- **Ultra-Premium Design**: Black & gold luxury theme
+- **Full-Screen Hero Section**: Massive hero banner with smooth animations
+- **Parallax Effects**: Smooth parallax scrolling throughout
+- **Product Showcase**: Beautiful product grid with hover effects
+- **Category Pages**: Dedicated category browsing
+- **Product Details**: Large product images with comment system
+- **Admin Panel**: Simple product management
+- **Responsive Design**: Works on all devices
 
-## 📋 Gereksinimler
+## 📋 Requirements
 
-- Python 3.8 veya üzeri
-- pip (Python paket yöneticisi)
+- Python 3.8 or higher
+- pip
 
-## 🚀 Kurulum
+## 🚀 Installation & Setup
 
-### 1. Projeyi İndirin veya Klonlayın
+### 1. Clone or Download the Project
 
 ```bash
 cd litus-ecommerce-demo
 ```
 
-### 2. Sanal Ortam Oluşturun
+### 2. Create Virtual Environment (Optional but Recommended)
 
 **Windows:**
 ```bash
@@ -40,171 +40,148 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. Bağımlılıkları Yükleyin
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Veritabanını Oluşturun ve Seed Verileri Ekleyin
-
-```bash
-python init_db.py
-```
-
-Bu komut:
-- Veritabanını oluşturur (`litus.db`)
-- Admin kullanıcısını oluşturur
-- Örnek kategorileri ekler
-- 12 örnek ürünü ekler
-
-### 5. Uygulamayı Çalıştırın
-
-```bash
-flask run
-```
-
-veya
+### 4. Run the Application
 
 ```bash
 python app.py
 ```
 
-Uygulama `http://localhost:5000` adresinde çalışacaktır.
+The application will automatically:
+- Create the SQLite database (`database.db`)
+- Create necessary tables (categories, products, comments)
+- Add sample categories
+- Create the `static/uploads/` folder for product images
 
-## 👤 Admin Paneli
+### 5. Access the Website
 
-Admin paneline erişim için:
+Open your browser and go to: `http://localhost:5000`
 
-1. Tarayıcınızda `http://localhost:5000/admin` adresine gidin
-2. Giriş bilgileri:
-   - **Kullanıcı adı:** `admin`
-   - **Şifre:** `admin`
-
-### Admin Panel Özellikleri
-
-- **Kategori Yönetimi**: Yeni kategori ekleme ve silme
-- **Ürün Yönetimi**: 
-  - Ürün ekleme
-  - Ürün düzenleme
-  - Ürün silme
-  - Ürün görseli yükleme
-
-## 📁 Proje Yapısı
+## 📁 Project Structure
 
 ```
 litus-ecommerce-demo/
-├── app.py                 # Ana Flask uygulaması
-├── config.py              # Yapılandırma dosyası
-├── models.py              # Veritabanı modelleri
-├── forms.py               # WTForms formları
-├── init_db.py             # Veritabanı seed scripti
-├── requirements.txt      # Python bağımlılıkları
-├── litus.db              # SQLite veritabanı (oluşturulacak)
-├── templates/            # HTML şablonları
-│   ├── base.html
-│   ├── index.html
-│   ├── shop.html
-│   ├── product_detail.html
-│   ├── cart.html
-│   ├── about.html
-│   ├── contact.html
-│   └── admin/
-│       ├── admin_login.html
-│       ├── admin_dashboard.html
-│       └── admin_product_form.html
-└── static/               # Statik dosyalar
-    ├── css/
-    │   └── style.css
-    ├── js/
-    │   └── main.js
-    └── images/
-        └── products/     # Yüklenen ürün görselleri
+├── app.py                      # Main Flask application
+├── database.db                 # SQLite database (auto-created)
+├── requirements.txt            # Python dependencies
+├── README.md                   # This file
+├── static/
+│   ├── css/
+│   │   └── style.css          # Ultra-premium styling
+│   ├── js/
+│   │   └── main.js            # Animations & interactions
+│   ├── images/
+│   │   └── Litus_amblem.jpeg  # Logo
+│   └── uploads/               # Product images (auto-created)
+└── templates/
+    ├── base.html              # Base template
+    ├── index.html             # Homepage
+    ├── category.html          # Category page
+    ├── product_detail.html    # Product detail page
+    └── admin_add_product.html # Admin panel
 ```
 
-## 🎯 Kullanım
+## 🎯 Usage
 
-### Ürün Görseli Yükleme
+### Adding Products (Admin Panel)
 
-1. Admin paneline giriş yapın
-2. "Ürün Ekle" veya mevcut bir ürünü düzenleyin
-3. "Ürün Görseli" alanından görsel seçin
-4. Desteklenen formatlar: PNG, JPG, JPEG, GIF, WEBP
-5. Maksimum dosya boyutu: 16MB
-6. Görseller `static/images/products/` klasörüne kaydedilir
+1. Navigate to: `http://localhost:5000/admin/add-product`
+2. Fill in the form:
+   - Product Name (required)
+   - Price (required)
+   - Category (required)
+   - Description (optional)
+   - Product Image (optional - PNG, JPG, JPEG, GIF, WEBP)
+3. Click "Ürünü Kaydet" (Save Product)
 
-### Ürün Ekleme
+### Viewing Products
 
-1. Admin paneline giriş yapın
-2. "Ürün Ekle" butonuna tıklayın
-3. Formu doldurun:
-   - Ürün Adı
-   - Slug (URL için, örn: `litus-premium-elbise`)
-   - Fiyat
-   - Stok
-   - Kategori
-   - Açıklama
-   - Görsel (opsiyonel)
-4. "Kaydet" butonuna tıklayın
+- **Homepage**: Shows featured products (latest 8 products)
+- **Categories**: Click on any category card to view products in that category
+- **Product Detail**: Click on any product to see full details and comments
 
-### Kategori Ekleme
+### Adding Comments
 
-1. Admin paneline giriş yapın
-2. "Kategori Ekle" butonuna tıklayın
-3. Kategori adı ve slug girin
-4. "Ekle" butonuna tıklayın
+1. Go to any product detail page
+2. Fill in your name and comment
+3. Click "Yorum Yap" (Add Comment)
 
-## 🔧 Yapılandırma
+## 🎨 Design Features
 
-`config.py` dosyasında aşağıdaki ayarları değiştirebilirsiniz:
+- **Color Scheme**: Black (#000000) and Gold (#D4AF37)
+- **Typography**: Playfair Display (headings) + Montserrat (body)
+- **Animations**: Smooth fade-in, parallax, and hover effects
+- **Layout**: Ultra-wide hero, grid-based product display
+- **Effects**: Gold glow on logo hover, smooth scroll, progress indicator
 
-- `SECRET_KEY`: Flask session güvenliği için
-- `UPLOAD_FOLDER`: Görsel yükleme klasörü
-- `MAX_CONTENT_LENGTH`: Maksimum dosya boyutu
-- `ADMIN_USERNAME` ve `ADMIN_PASSWORD`: Admin giriş bilgileri
+## 📝 Database Schema
 
-## 📝 Notlar
+### Categories Table
+- `id` (INTEGER PRIMARY KEY)
+- `name` (TEXT)
 
-- Bu bir **demo** projedir. Gerçek ödeme işlemi yapılmaz.
-- Güvenlik için production ortamında:
-  - `SECRET_KEY` değiştirilmeli
-  - Admin şifresi güçlü olmalı
-  - CSRF koruması aktif edilmeli
-  - HTTPS kullanılmalı
+### Products Table
+- `id` (INTEGER PRIMARY KEY)
+- `name` (TEXT)
+- `price` (REAL)
+- `description` (TEXT)
+- `image` (TEXT - filename)
+- `category_id` (INTEGER - foreign key)
 
-## 🐛 Sorun Giderme
+### Comments Table
+- `id` (INTEGER PRIMARY KEY)
+- `product_id` (INTEGER - foreign key)
+- `username` (TEXT)
+- `comment` (TEXT)
+- `created_at` (TIMESTAMP)
 
-### Veritabanı Hatası
+## 🔧 Configuration
 
-Eğer veritabanı hatası alırsanız:
+Edit `app.py` to modify:
+- Upload folder location
+- Maximum file size
+- Allowed file extensions
+- Secret key
 
-```bash
-python init_db.py
-```
+## 📱 Responsive Breakpoints
 
-komutunu tekrar çalıştırın.
+- Desktop: 1400px+
+- Tablet: 768px - 968px
+- Mobile: < 768px
 
-### Görsel Yükleme Hatası
+## 🐛 Troubleshooting
 
-`static/images/products/` klasörünün var olduğundan emin olun. Klasör otomatik oluşturulur, ancak manuel olarak da oluşturabilirsiniz.
+### Database Errors
+If you encounter database errors, delete `database.db` and restart the app. It will recreate the database automatically.
 
-### Port Zaten Kullanılıyor
+### Image Upload Issues
+- Ensure `static/uploads/` folder exists (created automatically)
+- Check file size (max 16MB)
+- Verify file format (PNG, JPG, JPEG, GIF, WEBP)
 
-Farklı bir port kullanmak için:
-
+### Port Already in Use
+Run on a different port:
 ```bash
 flask run --port 5001
 ```
 
-## 📄 Lisans
+## 📄 License
 
-Bu proje demo amaçlıdır ve eğitim/portfolyo için kullanılabilir.
+This is a demo project for portfolio/educational purposes.
 
-## 👨‍💻 Geliştirici
+## 👨‍💻 Developer Notes
 
-LITUS E-Commerce Demo - Flask + SQLite ile geliştirilmiştir.
+- This is a **visual showcase** project, not a full e-commerce solution
+- No payment processing
+- No user authentication (admin panel is open)
+- Simple SQLite database (suitable for demo purposes)
+- All images are stored locally in `static/uploads/`
 
 ---
 
-**LITUS** - Denizin zarafetini günlük yaşamınıza taşıyoruz.
-
+**LITUS** - Ultra Premium Fashion

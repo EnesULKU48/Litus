@@ -3,46 +3,47 @@
 {% block title %}Sepetim - LITUS{% endblock %}
 
 {% block content %}
-<div class="cart-section section-padding">
+<section class="cart-section section-padding">
     <div class="container">
         <h1 class="page-title mb-5" data-aos="fade-up">Sepetim</h1>
         
         {% if cart_items %}
-        <div class="row">
-            <div class="col-lg-8">
+        <div class="cart-wrapper">
+            <div class="cart-items-wrapper">
                 <div class="cart-items" data-aos="fade-up">
                     {% for item in cart_items %}
-                    <div class="cart-item" data-item-id="{{ item.id }}">
-                        <div class="row align-items-center">
-                            <div class="col-md-2">
-                                <a href="{{ url_for('product_detail', slug=item.product.slug) }}">
-                                    {% if item.product.image_filename %}
-                                        <img src="{{ url_for('static', filename='images/products/' + item.product.image_filename) }}" 
-                                             alt="{{ item.product.name }}" class="img-fluid">
+                    <div class="cart-item" data-cart-id="{{ item['id'] }}">
+                        <div class="cart-item-content">
+                            <div class="cart-item-image">
+                                <a href="{{ url_for('product_detail', product_id=item['product_id']) }}">
+                                    {% if item['image'] %}
+                                        <img src="{{ url_for('static', filename='uploads/' + item['image']) }}" 
+                                             alt="{{ item['name'] }}">
                                     {% else %}
-                                        <img src="https://via.placeholder.com/150/0D1B2A/D4AF37?text={{ item.product.name|replace(' ', '+') }}" 
-                                             alt="{{ item.product.name }}" class="img-fluid">
+                                        <div class="product-placeholder-small">
+                                            <i class="fas fa-image"></i>
+                                        </div>
                                     {% endif %}
                                 </a>
                             </div>
-                            <div class="col-md-4">
+                            <div class="cart-item-info">
                                 <h4 class="cart-item-name">
-                                    <a href="{{ url_for('product_detail', slug=item.product.slug) }}">{{ item.product.name }}</a>
+                                    <a href="{{ url_for('product_detail', product_id=item['product_id']) }}">{{ item['name'] }}</a>
                                 </h4>
-                                <p class="cart-item-category">{{ item.product.category.name }}</p>
+                                <p class="cart-item-unit-price">{{ "%.2f"|format(item['price']) }} ₺ / adet</p>
                             </div>
-                            <div class="col-md-2">
+                            <div class="cart-item-quantity">
                                 <div class="quantity-controls">
-                                    <button class="btn btn-sm btn-outline-secondary decrease-qty" data-item-id="{{ item.id }}">-</button>
-                                    <span class="quantity-value">{{ item.quantity }}</span>
-                                    <button class="btn btn-sm btn-outline-secondary increase-qty" data-item-id="{{ item.id }}">+</button>
+                                    <button class="btn-qty decrease-qty" data-cart-id="{{ item['id'] }}">-</button>
+                                    <span class="quantity-value">{{ item['quantity'] }}</span>
+                                    <button class="btn-qty increase-qty" data-cart-id="{{ item['id'] }}">+</button>
                                 </div>
                             </div>
-                            <div class="col-md-2">
-                                <p class="cart-item-price">{{ "%.2f"|format(item.product.price * item.quantity) }} ₺</p>
+                            <div class="cart-item-price">
+                                <p class="price-text">{{ "%.2f"|format(item['price'] * item['quantity']) }} ₺</p>
                             </div>
-                            <div class="col-md-2 text-end">
-                                <button class="btn btn-sm btn-danger remove-item" data-item-id="{{ item.id }}">
+                            <div class="cart-item-actions">
+                                <button class="btn-remove remove-item" data-cart-id="{{ item['id'] }}" title="Sil">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -52,7 +53,7 @@
                 </div>
             </div>
             
-            <div class="col-lg-4">
+            <div class="cart-summary-wrapper">
                 <div class="cart-summary" data-aos="fade-left">
                     <h3>Sipariş Özeti</h3>
                     <div class="summary-row">
@@ -63,16 +64,16 @@
                         <span>Kargo:</span>
                         <span>Ücretsiz</span>
                     </div>
-                    <hr>
+                    <hr class="summary-divider">
                     <div class="summary-row total">
                         <span>Toplam:</span>
                         <span id="total">{{ "%.2f"|format(total) }} ₺</span>
                     </div>
-                    <button class="btn btn-primary btn-lg w-100 mt-4" id="checkoutBtn">
+                    <button class="btn-luxury btn-full mt-4" id="checkoutBtn">
                         <i class="fas fa-lock"></i> Siparişi Tamamla
                     </button>
-                    <p class="text-muted text-center mt-3 small">
-                        <i class="fas fa-info-circle"></i> Bu bir demo sitedir. Ödeme işlemi gerçekleştirilmez.
+                    <p class="summary-note">
+                        <i class="fas fa-info-circle"></i> Bu bir demo sitedir.
                     </p>
                 </div>
             </div>
@@ -82,10 +83,9 @@
             <i class="fas fa-shopping-bag fa-4x mb-4"></i>
             <h3>Sepetiniz Boş</h3>
             <p class="text-muted">Sepetinize henüz ürün eklemediniz.</p>
-            <a href="{{ url_for('shop') }}" class="btn btn-primary">Alışverişe Başla</a>
+            <a href="{{ url_for('index') }}" class="btn-luxury">Alışverişe Başla</a>
         </div>
         {% endif %}
     </div>
-</div>
+</section>
 {% endblock %}
-

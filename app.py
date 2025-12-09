@@ -1,474 +1,612 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from werkzeug.utils import secure_filename
-from werkzeug.security import check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
-import uuid
+import sqlite3
 from datetime import datetime
 from functools import wraps
 
-from config import *
-from models import db, User, Category, Product, Comment, CartItem
-from forms import ProductForm, CategoryForm, CommentForm, ContactForm
-
 app = Flask(__name__)
-app.config.from_object(__name__)
-app.config['SECRET_KEY'] = SECRET_KEY
-app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = SQLALCHEMY_TRACK_MODIFICATIONS
-app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
-app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
-
-db.init_app(app)
+app.config['SECRET_KEY'] = 'litus-secret-key-2024'
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 # Upload klasörünü oluştur
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
+# Veritabanı bağlantısı
+def get_db():
+    conn = sqlite3.connect('database.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Veritabanını başlat
+def init_db():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Categories tablosu
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL
+        )
+    ''')
+    
+    # Products tablosu
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            price REAL NOT NULL,
+            description TEXT,
+            image TEXT,
+            category_id INTEGER,
+            FOREIGN KEY (category_id) REFERENCES categories(id)
+        )
+    ''')
+    
+    # Comments tablosu
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id INTEGER NOT NULL,
+            user_id INTEGER,
+            username TEXT NOT NULL,
+            comment TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # Users tablosu
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Cart tablosu
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cart (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (product_id) REFERENCES products(id)
+        )
+    ''')
+    
+    # Favorites tablosu
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (product_id) REFERENCES products(id),
+            UNIQUE(user_id, product_id)
+        )
+    ''')
+    
+    # Admin kullanıcısı oluştur
+    cursor.execute('SELECT COUNT(*) FROM users WHERE username = ?', ('admin',))
+    if cursor.fetchone()[0] == 0:
+        admin_password = generate_password_hash('admin')
+        cursor.execute('INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, ?)',
+                      ('admin', 'admin@litus.com', admin_password, 1))
+    
+    # Veritabanı migration - eksik kolonları ekle
+    try:
+        # Comments tablosuna user_id kolonu ekle (eğer yoksa)
+        cursor.execute("PRAGMA table_info(comments)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' not in columns:
+            cursor.execute('ALTER TABLE comments ADD COLUMN user_id INTEGER')
+            conn.commit()
+    except Exception as e:
+        print(f"Migration hatası: {e}")
+    
+    # Örnek kategoriler ekle
+    cursor.execute('SELECT COUNT(*) FROM categories')
+    if cursor.fetchone()[0] == 0:
+        categories = ['Kadın', 'Erkek', 'Çocuk', 'Aksesuar', 'Koleksiyon']
+        for cat in categories:
+            cursor.execute('INSERT INTO categories (name) VALUES (?)', (cat,))
+    
+    conn.commit()
+    conn.close()
 
 def allowed_file(filename):
-    """Dosya uzantısı kontrolü"""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
-
-def get_or_create_session_id():
-    """Session ID oluştur veya mevcut olanı al"""
-    if 'session_id' not in session:
-        session['session_id'] = str(uuid.uuid4())
-    return session['session_id']
-
-
-def admin_required(f):
-    """Admin yetkisi kontrolü decorator"""
+# Login required decorator
+def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('admin_logged_in'):
-            return redirect(url_for('admin_login'))
+        if 'user_id' not in session:
+            flash('Bu sayfaya erişmek için giriş yapmalısınız!', 'error')
+            return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
 
+# Admin required decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Bu sayfaya erişmek için giriş yapmalısınız!', 'error')
+            return redirect(url_for('login'))
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT is_admin FROM users WHERE id = ?', (session['user_id'],))
+        user = cursor.fetchone()
+        conn.close()
+        if not user or user['is_admin'] != 1:
+            flash('Bu sayfaya erişim yetkiniz yok!', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
-# ==================== ANA SAYFALAR ====================
+# Context processor - tüm template'lere categories ve user bilgisi ekle
+@app.context_processor
+def inject_categories():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM categories')
+    categories = cursor.fetchall()
+    
+    user = None
+    if 'user_id' in session:
+        cursor.execute('SELECT * FROM users WHERE id = ?', (session['user_id'],))
+        user = cursor.fetchone()
+    
+    conn.close()
+    return dict(categories=categories, current_user=user)
+
+# ==================== AUTH ROUTES ====================
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        if not username or not email or not password:
+            flash('Lütfen tüm alanları doldurun!', 'error')
+            return redirect(url_for('register'))
+        
+        if password != confirm_password:
+            flash('Şifreler eşleşmiyor!', 'error')
+            return redirect(url_for('register'))
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Kullanıcı adı kontrolü
+        cursor.execute('SELECT id FROM users WHERE username = ?', (username,))
+        if cursor.fetchone():
+            flash('Bu kullanıcı adı zaten kullanılıyor!', 'error')
+            conn.close()
+            return redirect(url_for('register'))
+        
+        # Email kontrolü
+        cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+        if cursor.fetchone():
+            flash('Bu e-posta adresi zaten kullanılıyor!', 'error')
+            conn.close()
+            return redirect(url_for('register'))
+        
+        # Kullanıcı oluştur
+        hashed_password = generate_password_hash(password)
+        cursor.execute('INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
+                      (username, email, hashed_password))
+        conn.commit()
+        user_id = cursor.lastrowid
+        conn.close()
+        
+        session['user_id'] = user_id
+        session['username'] = username
+        flash('Kayıt başarılı! Hoş geldiniz!', 'success')
+        return redirect(url_for('index'))
+    
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        
+        if not username or not password:
+            flash('Lütfen kullanıcı adı ve şifre girin!', 'error')
+            return redirect(url_for('login'))
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM users WHERE username = ?', (username,))
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            session['is_admin'] = user['is_admin']
+            
+            if user['is_admin'] == 1:
+                flash('Admin paneline hoş geldiniz!', 'success')
+                return redirect(url_for('admin_dashboard'))
+            else:
+                flash('Giriş başarılı! Hoş geldiniz!', 'success')
+                return redirect(url_for('index'))
+        else:
+            flash('Kullanıcı adı veya şifre hatalı!', 'error')
+            return redirect(url_for('login'))
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Çıkış yapıldı!', 'success')
+    return redirect(url_for('index'))
+
+# ==================== MAIN ROUTES ====================
 
 @app.route('/')
 def index():
-    """Ana sayfa"""
-    # Öne çıkan ürünler
-    featured_products = Product.query.order_by(Product.likes.desc()).limit(6).all()
-    new_products = Product.query.order_by(Product.created_at.desc()).limit(6).all()
-    categories = Category.query.all()
+    conn = get_db()
+    cursor = conn.cursor()
     
-    return render_template('index.html', 
-                         featured_products=featured_products,
-                         new_products=new_products,
-                         categories=categories)
-
-
-@app.route('/shop')
-def shop():
-    """Ürün listeleme sayfası"""
-    category_id = request.args.get('category', type=int)
-    search = request.args.get('search', '')
+    # Kategorileri al
+    cursor.execute('SELECT * FROM categories')
+    categories = cursor.fetchall()
     
-    query = Product.query
+    # Öne çıkan ürünler (ilk 8 ürün)
+    cursor.execute('SELECT * FROM products ORDER BY id DESC LIMIT 8')
+    featured_products = cursor.fetchall()
     
-    if category_id:
-        query = query.filter(Product.category_id == category_id)
+    conn.close()
+    return render_template('index.html', categories=categories, featured_products=featured_products)
+
+@app.route('/category/<int:category_id>')
+def category(category_id):
+    conn = get_db()
+    cursor = conn.cursor()
     
-    if search:
-        query = query.filter(Product.name.contains(search))
+    # Kategori bilgisi
+    cursor.execute('SELECT * FROM categories WHERE id = ?', (category_id,))
+    category = cursor.fetchone()
     
-    products = query.all()
-    categories = Category.query.all()
+    if not category:
+        flash('Kategori bulunamadı!', 'error')
+        return redirect(url_for('index'))
     
-    return render_template('shop.html', 
-                         products=products,
-                         categories=categories,
-                         selected_category=category_id,
-                         search=search)
-
-
-@app.route('/product/<slug>')
-def product_detail(slug):
-    """Ürün detay sayfası"""
-    product = Product.query.filter_by(slug=slug).first_or_404()
-    comments = Comment.query.filter_by(product_id=product.id).order_by(Comment.created_at.desc()).all()
-    form = CommentForm()
+    # Kategoriye ait ürünler
+    cursor.execute('SELECT * FROM products WHERE category_id = ?', (category_id,))
+    products = cursor.fetchall()
     
-    return render_template('product_detail.html', 
-                         product=product,
-                         comments=comments,
-                         form=form)
+    conn.close()
+    return render_template('category.html', category=category, products=products)
 
-
-@app.route('/cart')
-def cart():
-    """Sepet sayfası"""
-    session_id = get_or_create_session_id()
-    cart_items = CartItem.query.filter_by(session_id=session_id).all()
+@app.route('/product/<int:product_id>')
+def product_detail(product_id):
+    conn = get_db()
+    cursor = conn.cursor()
     
-    total = sum(item.product.price * item.quantity for item in cart_items)
+    # Ürün bilgisi
+    cursor.execute('SELECT * FROM products WHERE id = ?', (product_id,))
+    product = cursor.fetchone()
     
-    return render_template('cart.html', cart_items=cart_items, total=total)
-
-
-@app.route('/about')
-def about():
-    """Hakkımızda sayfası"""
-    return render_template('about.html')
-
-
-@app.route('/contact', methods=['GET', 'POST'])
-def contact():
-    """İletişim sayfası"""
-    form = ContactForm()
-    if form.validate_on_submit():
-        # Form verilerini logla (gerçek e-posta gönderme yok)
-        print(f"İletişim Formu - {datetime.now()}")
-        print(f"Ad: {form.name.data}")
-        print(f"E-posta: {form.email.data}")
-        print(f"Konu: {form.subject.data}")
-        print(f"Mesaj: {form.message.data}")
-        flash('Mesajınız alındı! En kısa sürede size dönüş yapacağız.', 'success')
-        return redirect(url_for('contact'))
+    if not product:
+        flash('Ürün bulunamadı!', 'error')
+        return redirect(url_for('index'))
     
-    return render_template('contact.html', form=form)
+    # Ürün yorumları
+    # user_id kolonu varsa JOIN yap, yoksa sadece username kullan
+    try:
+        cursor.execute("PRAGMA table_info(comments)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' in columns:
+            cursor.execute('SELECT c.*, u.username as user_username FROM comments c LEFT JOIN users u ON c.user_id = u.id WHERE c.product_id = ? ORDER BY c.created_at DESC', (product_id,))
+        else:
+            cursor.execute('SELECT * FROM comments WHERE product_id = ? ORDER BY created_at DESC', (product_id,))
+    except Exception as e:
+        # Hata durumunda basit sorgu
+        print(f"Yorum sorgusu hatası: {e}")
+        cursor.execute('SELECT * FROM comments WHERE product_id = ? ORDER BY created_at DESC', (product_id,))
+    comments = cursor.fetchall()
+    
+    # Favori kontrolü
+    is_favorite = False
+    if 'user_id' in session:
+        cursor.execute('SELECT id FROM favorites WHERE user_id = ? AND product_id = ?', 
+                     (session['user_id'], product_id))
+        is_favorite = cursor.fetchone() is not None
+    
+    conn.close()
+    return render_template('product_detail.html', product=product, comments=comments, is_favorite=is_favorite)
 
+@app.route('/product/<int:product_id>/comment', methods=['POST'])
+@login_required
+def add_comment(product_id):
+    comment = request.form.get('comment', '').strip()
+    
+    if not comment:
+        flash('Lütfen yorum yazın!', 'error')
+        return redirect(url_for('product_detail', product_id=product_id))
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # user_id kolonu varsa ekle, yoksa sadece username kullan
+    try:
+        cursor.execute("PRAGMA table_info(comments)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'user_id' in columns:
+            cursor.execute('INSERT INTO comments (product_id, user_id, username, comment) VALUES (?, ?, ?, ?)',
+                          (product_id, session['user_id'], session['username'], comment))
+        else:
+            cursor.execute('INSERT INTO comments (product_id, username, comment) VALUES (?, ?, ?)',
+                          (product_id, session['username'], comment))
+    except Exception as e:
+        print(f"Yorum ekleme hatası: {e}")
+        # Fallback - sadece username ile ekle
+        cursor.execute('INSERT INTO comments (product_id, username, comment) VALUES (?, ?, ?)',
+                      (product_id, session['username'], comment))
+    
+    conn.commit()
+    conn.close()
+    
+    flash('Yorumunuz eklendi!', 'success')
+    return redirect(url_for('product_detail', product_id=product_id))
 
-# ==================== API ENDPOINTS ====================
+# ==================== CART & FAVORITES API ====================
 
 @app.route('/api/add-to-cart', methods=['POST'])
+@login_required
 def add_to_cart():
-    """Sepete ürün ekle"""
     data = request.get_json()
     product_id = data.get('product_id')
-    quantity = data.get('quantity', 1)
+    quantity = int(data.get('quantity', 1))
     
-    product = Product.query.get_or_404(product_id)
-    session_id = get_or_create_session_id()
+    conn = get_db()
+    cursor = conn.cursor()
     
     # Mevcut sepet öğesini kontrol et
-    cart_item = CartItem.query.filter_by(
-        session_id=session_id,
-        product_id=product_id
-    ).first()
+    cursor.execute('SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?',
+                  (session['user_id'], product_id))
+    existing = cursor.fetchone()
     
-    if cart_item:
-        cart_item.quantity += quantity
+    if existing:
+        new_quantity = existing['quantity'] + quantity
+        cursor.execute('UPDATE cart SET quantity = ? WHERE id = ?', (new_quantity, existing['id']))
     else:
-        cart_item = CartItem(
-            session_id=session_id,
-            product_id=product_id,
-            quantity=quantity
-        )
-        db.session.add(cart_item)
+        cursor.execute('INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)',
+                      (session['user_id'], product_id, quantity))
     
-    db.session.commit()
+    conn.commit()
     
-    # Sepet toplamını hesapla
-    cart_count = CartItem.query.filter_by(session_id=session_id).count()
+    # Sepet sayısını al
+    cursor.execute('SELECT COUNT(*) as count FROM cart WHERE user_id = ?', (session['user_id'],))
+    cart_count = cursor.fetchone()['count']
     
-    return jsonify({
-        'success': True,
-        'message': 'Ürün sepete eklendi',
-        'cart_count': cart_count
-    })
-
-
-@app.route('/api/update-cart', methods=['POST'])
-def update_cart():
-    """Sepet öğesi güncelle"""
-    data = request.get_json()
-    item_id = data.get('item_id')
-    quantity = data.get('quantity')
-    
-    cart_item = CartItem.query.get_or_404(item_id)
-    session_id = get_or_create_session_id()
-    
-    if cart_item.session_id != session_id:
-        return jsonify({'success': False, 'message': 'Yetkisiz işlem'}), 403
-    
-    if quantity <= 0:
-        db.session.delete(cart_item)
-    else:
-        cart_item.quantity = quantity
-    
-    db.session.commit()
-    
-    # Yeni toplamı hesapla
-    cart_items = CartItem.query.filter_by(session_id=session_id).all()
-    total = sum(item.product.price * item.quantity for item in cart_items)
-    
-    return jsonify({
-        'success': True,
-        'total': float(total),
-        'item_total': float(cart_item.product.price * cart_item.quantity) if quantity > 0 else 0
-    })
-
-
-@app.route('/api/remove-from-cart', methods=['POST'])
-def remove_from_cart():
-    """Sepetten ürün sil"""
-    data = request.get_json()
-    item_id = data.get('item_id')
-    
-    cart_item = CartItem.query.get_or_404(item_id)
-    session_id = get_or_create_session_id()
-    
-    if cart_item.session_id != session_id:
-        return jsonify({'success': False, 'message': 'Yetkisiz işlem'}), 403
-    
-    db.session.delete(cart_item)
-    db.session.commit()
-    
-    cart_count = CartItem.query.filter_by(session_id=session_id).count()
-    cart_items = CartItem.query.filter_by(session_id=session_id).all()
-    total = sum(item.product.price * item.quantity for item in cart_items)
-    
-    return jsonify({
-        'success': True,
-        'cart_count': cart_count,
-        'total': float(total)
-    })
-
+    conn.close()
+    return jsonify({'success': True, 'message': 'Ürün sepete eklendi', 'cart_count': cart_count})
 
 @app.route('/api/toggle-favorite', methods=['POST'])
+@login_required
 def toggle_favorite():
-    """Favori ekle/çıkar"""
     data = request.get_json()
     product_id = data.get('product_id')
     
-    if 'favorites' not in session:
-        session['favorites'] = []
+    conn = get_db()
+    cursor = conn.cursor()
     
-    favorites = session['favorites']
+    # Favori kontrolü
+    cursor.execute('SELECT id FROM favorites WHERE user_id = ? AND product_id = ?',
+                  (session['user_id'], product_id))
+    favorite = cursor.fetchone()
     
-    if product_id in favorites:
-        favorites.remove(product_id)
+    if favorite:
+        cursor.execute('DELETE FROM favorites WHERE id = ?', (favorite['id'],))
         is_favorite = False
     else:
-        favorites.append(product_id)
+        cursor.execute('INSERT INTO favorites (user_id, product_id) VALUES (?, ?)',
+                      (session['user_id'], product_id))
         is_favorite = True
     
-    session['favorites'] = favorites
+    conn.commit()
+    conn.close()
     
-    return jsonify({
-        'success': True,
-        'is_favorite': is_favorite
-    })
+    return jsonify({'success': True, 'is_favorite': is_favorite})
 
+@app.route('/cart')
+@login_required
+def cart():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT c.*, p.name, p.price, p.image 
+        FROM cart c 
+        JOIN products p ON c.product_id = p.id 
+        WHERE c.user_id = ?
+    ''', (session['user_id'],))
+    cart_items = cursor.fetchall()
+    
+    total = sum(item['price'] * item['quantity'] for item in cart_items)
+    
+    conn.close()
+    return render_template('cart.html', cart_items=cart_items, total=total)
 
-@app.route('/api/like-product', methods=['POST'])
-def like_product():
-    """Ürün beğen"""
+@app.route('/api/remove-from-cart', methods=['POST'])
+@login_required
+def remove_from_cart():
     data = request.get_json()
-    product_id = data.get('product_id')
+    cart_id = data.get('cart_id')
     
-    product = Product.query.get_or_404(product_id)
-    product.likes += 1
-    db.session.commit()
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM cart WHERE id = ? AND user_id = ?', (cart_id, session['user_id']))
+    conn.commit()
+    conn.close()
     
-    return jsonify({
-        'success': True,
-        'likes': product.likes
-    })
+    return jsonify({'success': True})
 
-
-@app.route('/api/add-comment', methods=['POST'])
-def add_comment():
-    """Yorum ekle"""
+@app.route('/api/update-cart', methods=['POST'])
+@login_required
+def update_cart():
     data = request.get_json()
-    product_id = data.get('product_id')
-    author_name = data.get('author_name')
-    content = data.get('content')
+    cart_id = data.get('cart_id')
+    quantity = int(data.get('quantity', 1))
     
-    if not author_name or not content:
-        return jsonify({'success': False, 'message': 'Ad ve yorum gereklidir'}), 400
+    conn = get_db()
+    cursor = conn.cursor()
     
-    comment = Comment(
-        product_id=product_id,
-        author_name=author_name,
-        content=content
-    )
+    if quantity <= 0:
+        cursor.execute('DELETE FROM cart WHERE id = ? AND user_id = ?', (cart_id, session['user_id']))
+    else:
+        cursor.execute('UPDATE cart SET quantity = ? WHERE id = ? AND user_id = ?',
+                      (quantity, cart_id, session['user_id']))
     
-    db.session.add(comment)
-    db.session.commit()
+    conn.commit()
     
-    return jsonify({
-        'success': True,
-        'comment': {
-            'id': comment.id,
-            'author_name': comment.author_name,
-            'content': comment.content,
-            'created_at': comment.created_at.strftime('%d.%m.%Y %H:%M')
-        }
-    })
+    # Yeni toplamı hesapla
+    cursor.execute('''
+        SELECT SUM(p.price * c.quantity) as total 
+        FROM cart c 
+        JOIN products p ON c.product_id = p.id 
+        WHERE c.user_id = ?
+    ''', (session['user_id'],))
+    total = cursor.fetchone()['total'] or 0
+    
+    conn.close()
+    return jsonify({'success': True, 'total': total})
 
+@app.route('/favorites')
+@login_required
+def favorites():
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT p.*, f.id as favorite_id
+        FROM favorites f
+        JOIN products p ON f.product_id = p.id
+        WHERE f.user_id = ?
+        ORDER BY f.created_at DESC
+    ''', (session['user_id'],))
+    favorite_products = cursor.fetchall()
+    
+    conn.close()
+    return render_template('favorites.html', favorite_products=favorite_products)
 
 # ==================== ADMIN PANEL ====================
 
-@app.route('/admin', methods=['GET', 'POST'])
+@app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
-    """Admin giriş"""
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
         
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin_dashboard'))
-        else:
-            flash('Kullanıcı adı veya şifre hatalı!', 'error')
+        if username == 'admin' and password == 'admin':
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM users WHERE username = ?', ('admin',))
+            user = cursor.fetchone()
+            conn.close()
+            
+            if user:
+                session['user_id'] = user['id']
+                session['username'] = user['username']
+                session['is_admin'] = 1
+                flash('Admin paneline hoş geldiniz!', 'success')
+                return redirect(url_for('admin_dashboard'))
+        
+        flash('Kullanıcı adı veya şifre hatalı!', 'error')
+        return redirect(url_for('admin_login'))
     
-    return render_template('admin/admin_login.html')
-
-
-@app.route('/admin/logout')
-def admin_logout():
-    """Admin çıkış"""
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('admin_login'))
-
+    return render_template('admin_login.html')
 
 @app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
-    """Admin panel ana sayfa"""
-    products = Product.query.all()
-    categories = Category.query.all()
-    return render_template('admin/admin_dashboard.html', 
-                         products=products,
-                         categories=categories)
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT * FROM products ORDER BY id DESC')
+    products = cursor.fetchall()
+    
+    cursor.execute('SELECT * FROM categories')
+    categories = cursor.fetchall()
+    
+    conn.close()
+    return render_template('admin_dashboard.html', products=products, categories=categories)
 
-
-@app.route('/admin/product/add', methods=['GET', 'POST'])
+@app.route('/admin/add-product', methods=['GET', 'POST'])
 @admin_required
 def admin_add_product():
-    """Ürün ekle"""
-    form = ProductForm()
-    form.category_id.choices = [(c.id, c.name) for c in Category.query.all()]
-    
-    if form.validate_on_submit():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        price = request.form.get('price', '').strip()
+        description = request.form.get('description', '').strip()
+        category_id = request.form.get('category_id', '').strip()
+        file = request.files.get('image')
+        
+        if not name or not price or not category_id:
+            flash('Lütfen zorunlu alanları doldurun!', 'error')
+            return redirect(url_for('admin_add_product'))
+        
+        try:
+            price = float(price)
+        except ValueError:
+            flash('Geçerli bir fiyat girin!', 'error')
+            return redirect(url_for('admin_add_product'))
+        
         # Görsel yükleme
         image_filename = None
-        if form.image.data:
-            file = form.image.data
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                # Benzersiz isim oluştur
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-                file.save(filepath)
-                image_filename = unique_filename
+        if file and file.filename and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            image_filename = f"{timestamp}_{filename}"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], image_filename)
+            file.save(filepath)
         
-        product = Product(
-            name=form.name.data,
-            slug=form.slug.data,
-            price=form.price.data,
-            description=form.description.data,
-            stock=form.stock.data,
-            category_id=form.category_id.data,
-            image_filename=image_filename
-        )
+        # Veritabanına kaydet
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO products (name, price, description, image, category_id)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (name, price, description, image_filename, category_id))
+        conn.commit()
+        conn.close()
         
-        db.session.add(product)
-        db.session.commit()
         flash('Ürün başarıyla eklendi!', 'success')
         return redirect(url_for('admin_dashboard'))
     
-    return render_template('admin/admin_product_form.html', form=form, title='Ürün Ekle')
-
-
-@app.route('/admin/product/edit/<int:id>', methods=['GET', 'POST'])
-@admin_required
-def admin_edit_product(id):
-    """Ürün düzenle"""
-    product = Product.query.get_or_404(id)
-    form = ProductForm(obj=product)
-    form.category_id.choices = [(c.id, c.name) for c in Category.query.all()]
+    # GET request - formu göster
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM categories')
+    categories = cursor.fetchall()
+    conn.close()
     
-    if form.validate_on_submit():
-        product.name = form.name.data
-        product.slug = form.slug.data
-        product.price = form.price.data
-        product.description = form.description.data
-        product.stock = form.stock.data
-        product.category_id = form.category_id.data
-        
-        # Yeni görsel yüklendiyse
-        if form.image.data:
-            file = form.image.data
-            if file and allowed_file(file.filename):
-                # Eski görseli sil
-                if product.image_filename:
-                    old_path = os.path.join(app.config['UPLOAD_FOLDER'], product.image_filename)
-                    if os.path.exists(old_path):
-                        os.remove(old_path)
-                
-                filename = secure_filename(file.filename)
-                unique_filename = f"{uuid.uuid4()}_{filename}"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-                file.save(filepath)
-                product.image_filename = unique_filename
-        
-        db.session.commit()
-        flash('Ürün başarıyla güncellendi!', 'success')
-        return redirect(url_for('admin_dashboard'))
-    
-    return render_template('admin/admin_product_form.html', form=form, product=product, title='Ürün Düzenle')
-
-
-@app.route('/admin/product/delete/<int:id>', methods=['POST'])
-@admin_required
-def admin_delete_product(id):
-    """Ürün sil"""
-    product = Product.query.get_or_404(id)
-    
-    # Görseli sil
-    if product.image_filename:
-        image_path = os.path.join(app.config['UPLOAD_FOLDER'], product.image_filename)
-        if os.path.exists(image_path):
-            os.remove(image_path)
-    
-    db.session.delete(product)
-    db.session.commit()
-    flash('Ürün başarıyla silindi!', 'success')
-    return redirect(url_for('admin_dashboard'))
-
-
-@app.route('/admin/category/add', methods=['POST'])
-@admin_required
-def admin_add_category():
-    """Kategori ekle"""
-    form = CategoryForm()
-    if form.validate_on_submit():
-        category = Category(
-            name=form.name.data,
-            slug=form.slug.data
-        )
-        db.session.add(category)
-        db.session.commit()
-        flash('Kategori başarıyla eklendi!', 'success')
-    return redirect(url_for('admin_dashboard'))
-
-
-@app.route('/admin/category/delete/<int:id>', methods=['POST'])
-@admin_required
-def admin_delete_category(id):
-    """Kategori sil"""
-    category = Category.query.get_or_404(id)
-    
-    # Kategoriye ait ürünler varsa silinemez
-    if category.products:
-        flash('Bu kategoriye ait ürünler olduğu için silinemez!', 'error')
-        return redirect(url_for('admin_dashboard'))
-    
-    db.session.delete(category)
-    db.session.commit()
-    flash('Kategori başarıyla silindi!', 'success')
-    return redirect(url_for('admin_dashboard'))
-
+    return render_template('admin_add_product.html', categories=categories)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
+    init_db()
     app.run(debug=True)
-
