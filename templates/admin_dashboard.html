@@ -52,7 +52,16 @@
                                 {% endfor %}
                             </td>
                             <td>
-                                <a href="{{ url_for('product_detail', product_id=product['id']) }}" class="btn-sm">Görüntüle</a>
+                                <div class="admin-actions-cell">
+                                    <a href="{{ url_for('product_detail', product_id=product['id']) }}" class="btn-sm">Görüntüle</a>
+                                    <form method="POST" action="{{ url_for('admin_delete_product', product_id=product['id']) }}" 
+                                          style="display: inline;" 
+                                          onsubmit="return confirm('Bu ürünü silmek istediğinizden emin misiniz? Bu işlem geri alınamaz!');">
+                                        <button type="submit" class="btn-sm btn-danger" style="margin-left: 5px;">
+                                            <i class="fas fa-trash"></i> Sil
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}

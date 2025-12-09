@@ -1430,6 +1430,21 @@ body {
     background: #F4D03F;
 }
 
+.btn-sm.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-sm.btn-danger:hover {
+    background: #c82333;
+}
+
+.admin-actions-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .admin-actions {
     display: flex;
     gap: 1rem;

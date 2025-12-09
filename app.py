@@ -607,6 +607,48 @@ def admin_add_product():
     
     return render_template('admin_add_product.html', categories=categories)
 
+@app.route('/admin/delete-product/<int:product_id>', methods=['POST'])
+@admin_required
+def admin_delete_product(product_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Ürün bilgisini al (görsel dosyasını silmek için)
+    cursor.execute('SELECT * FROM products WHERE id = ?', (product_id,))
+    product = cursor.fetchone()
+    
+    if not product:
+        flash('Ürün bulunamadı!', 'error')
+        conn.close()
+        return redirect(url_for('admin_dashboard'))
+    
+    # İlgili yorumları sil
+    cursor.execute('DELETE FROM comments WHERE product_id = ?', (product_id,))
+    
+    # Sepetten sil
+    cursor.execute('DELETE FROM cart WHERE product_id = ?', (product_id,))
+    
+    # Favorilerden sil
+    cursor.execute('DELETE FROM favorites WHERE product_id = ?', (product_id,))
+    
+    # Ürünü sil
+    cursor.execute('DELETE FROM products WHERE id = ?', (product_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    # Görsel dosyasını sil (varsa)
+    if product['image']:
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], product['image'])
+        try:
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        except Exception as e:
+            print(f"Görsel silme hatası: {e}")
+    
+    flash('Ürün başarıyla silindi!', 'success')
+    return redirect(url_for('admin_dashboard'))
+
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
